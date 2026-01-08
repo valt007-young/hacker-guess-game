@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Guess Game</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body{
+  margin:0;
+  background:black;
+  color:#00ff9c;
+  font-family:monospace;
+  overflow:hidden;
+}
+canvas{
+  position:fixed;
+  top:0;
+  left:0;
+  z-index:0;
+}
+.game{
+  position:relative;
+  z-index:2;
+  max-width:420px;
+  margin:40px auto;
+  padding:16px;
+  border:1px solid #00ff9c;
+  background:rgba(0,0,0,0.9);
+  box-shadow:0 0 20px #00ff9c;
+}
+h1{text-align:center;font-size:22px}
+.log{
+  height:120px;
+  overflow-y:auto;
+  border:1px solid #00ff9c;
+  padding:6px;
+  margin-bottom:8px;
+  font-size:13px;
+}
+input{
+  width:100%;
+  padding:12px;
+  background:black;
+  color:#00ff9c;
+  border:1px solid #00ff9c;
+  font-size:18px;
+  outline:none;
+}
+.status{margin-top:6px;font-size:13px}
+.alert{color:red;animation:blink .8s infinite}
+@keyframes blink{50%{opacity:0}}
+.ad{
+  position:fixed;
+  bottom:0;
+  width:100%;
+  text-align:center;
+  background:#111;
+  color:#888;
+  padding:6px;
+  font-size:11px;
+  z-index:3;
+
+/* GLITCH EFFECTS */
+.glitch{animation:shake 0.15s infinite;}
+@keyframes shake{0%{transform:translate(0,0)}25%{transform:translate(-2px,1px)}50%{transform:translate(2px,-1px)}75%{transform:translate(-1px,2px)}}
+.distort {animation: distort 0.12s infinite; filter: blur(1px) contrast(140%);}
+@keyframes distort {0%{transform:translate(0,0) skew(0deg);}25%{transform:translate(-3px,2px) skew(1deg);}50%{transform:translate(3px,-2px) skew(-1deg);}75%{transform:translate(-2px,1px) skew(0.5deg);}}
+.error {color:red;font-weight:bold;}
+.blackout {background:black; color:black !important;}
+.input-flicker {animation:shake 0.08s infinite;}
+</style>
+</head>
+
+<body>
+
+<canvas id="matrix"></canvas>
+
+<div class="game" id="gameBox">
+  <h1>GUESS GAME</h1>
+
+  <div class="log" id="log">
+    SYSTEM ONLINE...<br>
+    NUMERIC FIREWALL ACTIVE<br>
+  </div>
+
+  <input type="number" id="input" placeholder="ENTER NUMBER & PRESS ENTER" onkeydown="if(event.key==='Enter') guess()">
+
+  <div class="status" id="status"></div>
+  <div class="status">BEST LEVEL: <span id="best">0</span></div>
+</div>
+
+<div class="ad">AD SPACE – ADD ADSENSE HERE</div>
+
+<!-- SOUND EFFECTS -->
+<audio id="typeSound" src="https://assets.mixkit.co/sfx/preview/mixkit-keyboard-click-1126.mp3"></audio>
+<audio id="successSound" src="https://assets.mixkit.co/sfx/preview/mixkit-unlock-game-notification-253.mp3"></audio>
+<audio id="alarmSound" src="https://assets.mixkit.co/sfx/preview/mixkit-alarm-digital-clock-beep-989.mp3"></audio>
+
+<script>
+/* ===== MATRIX ===== */
+const canvas=document.getElementById("matrix");
+const ctx=canvas.getContext("2d");
+function resize(){canvas.width=innerWidth; canvas.height=innerHeight;}
+resize(); addEventListener("resize",resize);
+
+const chars="0123456789";
+const size=14;
+let cols,drops;
+let matrixSpeed=33;
+
+function initMatrix(){cols=Math.floor(canvas.width/size); drops=Array(cols).fill(1);}
+initMatrix();
+
+let specialEventActive=false;
+let specialNumber=67; // number-triggered special event
+let specialEventEnd=0;
+
+setInterval(()=>{
+  ctx.fillStyle="rgba(0,0,0,0.05)";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle="#00ff9c";
+  ctx.font=size+"px monospace";
+
+  drops.forEach((y,i)=>{
+    let t;
+    if(specialEventActive) {
+      t=specialNumber; // matrix shows only special number
+    } else {
+      t=chars[Math.floor(Math.random()*chars.length)];
+    }
+    ctx.fillText(t,i*size,y*size);
+    if(y*size>canvas.height && Math.random()>0.98) drops[i]=0;
+    drops[i]++;
+  });
+
+  // stop special event if time ended
+  if(specialEventActive && Date.now()>specialEventEnd) {
+    specialEventActive=false;
+    log("⚠ SPECIAL CODE ENDED");
+  }
+},matrixSpeed);
+
+/* ===== GAME ===== */
+let level=1;
+let max=100;
+let time=30;
+let timer;
+let target=random();
+
+let best=localStorage.getItem("best")||0;
+document.getElementById("best").textContent=best;
+
+const typeSound=document.getElementById("typeSound");
+const successSound=document.getElementById("successSound");
+const alarmSound=document.getElementById("alarmSound");
+const gameBox=document.getElementById("gameBox");
+const input=document.getElementById("input");
+
+function random(){return Math.floor(Math.random()*max)+1;}
+function log(msg){const l=document.getElementById("log"); l.innerHTML+=msg+"<br>"; l.scrollTop=l.scrollHeight;}
+function levelTime(lvl){return 30+(lvl-1)*30;}
+
+function startTimer(){
+  clearInterval(timer);
+  time=levelTime(level);
+  updateStatus();
+  timer=setInterval(()=>{
+    time--;
+    updateStatus();
+    if(Math.random()<0.07 && time<20) advancedGlitch();
+    if(time<=0){ clearInterval(timer); resetGame(); }
+  },1000);
+}
+
+function updateStatus(){document.getElementById("status").textContent=`LEVEL ${level} | RANGE 1–${max} | TIME ${time}s`;}
+
+// ===== ADVANCED GLITCH + EXTREME EVENTS =====
+function advancedGlitch(){
+  const r=Math.random();
+  if(r<0.2){ gameBox.classList.add("distort"); log("⚠ SIGNAL DISTORTION DETECTED"); setTimeout(()=>gameBox.classList.remove("distort"),400);}
+  else if(r<0.35){ log("⚠ MATRIX OVERLOAD"); let oldSpeed=matrixSpeed; matrixSpeed=5; setTimeout(()=>matrixSpeed=oldSpeed,1500);}
+  else if(r<0.5){ log("<span class='error'>✖ MEMORY CORRUPTION WARNING</span>");}
+  else if(r<0.65){ log("⚠ INPUT DESYNC"); input.value=Math.floor(Math.random()*9); setTimeout(()=>input.value="",200);}
+  else if(r<0.8){ document.body.classList.add("blackout"); log("<span class='error'>✖ SCREEN BLACKOUT</span>"); setTimeout(()=>document.body.classList.remove("blackout"),1000);}
+  else if(r<0.9){ log("⚠ MATRIX FREEZE"); let oldSpeed=matrixSpeed; matrixSpeed=0; setTimeout(()=>matrixSpeed=33,2000);}
+  else{ log("⚠ INPUT FLICKER"); input.classList.add("input-flicker"); setTimeout(()=>input.classList.remove("input-flicker"),500);}
+}
+
+function resetGame(){
+  alarmSound.play();
+  log("✖ TRACE DETECTED – SYSTEM RESET");
+  document.getElementById("status").innerHTML="<span class='alert'>TRACE DETECTED</span>";
+  target=random();
+  startTimer();
+}
+
+function guess(){
+  typeSound.play();
+  const val=Number(input.value);
+  input.value="";
+  if(!val) return;
+
+  // SPECIAL NUMBER EVENT
+  if(val===specialNumber){
+    log(`🔥 SPECIAL CODE ${specialNumber} ACTIVATED!`);
+    specialEventActive=true;
+    specialEventEnd=Date.now()+10000; // 10 seconds
+  }
+
+  if(val===target){
+    successSound.play();
+    clearInterval(timer);
+    log("✔ ACCESS GRANTED – LEVEL "+level+" BREACHED");
+    level++;
+    max*=10;
+    target=random();
+    if(level>best){ best=level; localStorage.setItem("best",best); document.getElementById("best").textContent=best;}
+    startTimer();
+  } else if(val<target){ log("▲ TOO LOW"); }
+  else{ log("▼ TOO HIGH"); }
+}
+
+startTimer();
+</script>
+
+</body>
+</html>
+

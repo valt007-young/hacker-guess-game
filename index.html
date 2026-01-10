@@ -14,6 +14,7 @@
 <title>Hacker Guess Game</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:monospace}
 body{background:black;overflow:hidden;color:#0f0}
@@ -28,10 +29,10 @@ canvas{position:fixed;top:0;left:0;z-index:-1}
   border:1px solid #0f0;
   padding:18px;
   text-align:center;
-  box-shadow:0 0 25px #0f0;
+  box-shadow:0 0 20px rgba(0,255,0,.6);
 }
 
-h1{margin-bottom:8px}
+h1{margin-bottom:6px}
 .mode button{
   width:48%;
   padding:10px;
@@ -41,7 +42,10 @@ h1{margin-bottom:8px}
   border:1px solid #0f0;
 }
 
-.info,.turn,.timer,.status{margin-top:8px;font-size:14px}
+.info,.turn,.timer,.status{
+  margin-top:8px;
+  font-size:14px;
+}
 .status{min-height:18px}
 
 input{
@@ -55,12 +59,14 @@ input{
   text-align:center;
 }
 
-.glitch{animation:g .15s infinite}
-@keyframes g{
-  0%{transform:translate(0)}
-  25%{transform:translate(-2px,2px)}
-  50%{transform:translate(2px,-2px)}
-  75%{transform:translate(-2px,-2px)}
+/* subtle glitch */
+.micro{
+  animation:micro .15s linear;
+}
+@keyframes micro{
+  0%{filter:none}
+  50%{filter:brightness(1.4)}
+  100%{filter:none}
 }
 
 .hidden{display:none}
@@ -79,12 +85,12 @@ input{
 </div>
 
 <div class="panel hidden" id="game">
-  <h1>BREACHING FIREWALL</h1>
+  <h1>BRUTE FORCE MODULE</h1>
   <div class="info" id="info"></div>
   <div class="turn" id="turn"></div>
   <div class="timer" id="timer"></div>
   <div class="status" id="status"></div>
-  <input id="input" inputmode="numeric" placeholder="ENTER CODE">
+  <input id="input" inputmode="numeric" placeholder="ENTER PAYLOAD">
 </div>
 
 <script>
@@ -125,17 +131,17 @@ function start(m){
 }
 
 function nextLevel(){
-  max=Math.pow(10,level);
+  max=Math.pow(10,level+1); // starts at 100
   secret=Math.floor(Math.random()*max)+1;
   time=level*30;
-  updateUI();
+  updateUI("INITIATING BRUTE FORCE…");
   startTimer();
 }
 
-function updateUI(){
+function updateUI(msg){
   info.innerText=`LEVEL ${level} | RANGE 1-${max}`;
   turn.innerText=mode==="duo"?`PLAYER ${player}`:"";
-  status.innerText="INITIALIZING TRACE…";
+  status.innerText=msg;
 }
 
 function startTimer(){
@@ -148,18 +154,18 @@ function startTimer(){
   },1000);
 }
 
-function glitch(){
-  game.classList.add("glitch");
-  setTimeout(()=>game.classList.remove("glitch"),300);
+function microGlitch(){
+  game.classList.add("micro");
+  setTimeout(()=>game.classList.remove("micro"),150);
 }
 
 function lose(){
   clearInterval(timer);
-  glitch();
+  microGlitch();
   if(mode==="duo"){
     player=player===1?2:1;
     time=level*30;
-    updateUI();
+    updateUI("SESSION TRANSFERRED");
     startTimer();
   }else{
     level=1;
@@ -170,8 +176,8 @@ function lose(){
 function win(){
   clearInterval(timer);
   status.innerText=mode==="duo"
-    ?`PLAYER ${player} BREACHED`
-    :"ACCESS GRANTED";
+    ?`PLAYER ${player} BREACHED FIREWALL`
+    :"FIREWALL BREACHED";
   setTimeout(()=>{
     level++;
     nextLevel();
@@ -184,7 +190,6 @@ input.addEventListener("input",()=>{
   clearTimeout(typingTimer);
   typingTimer=setTimeout(()=>submit(),600);
 });
-
 input.addEventListener("keydown",e=>{
   if(e.key==="Enter")submit();
 });
@@ -199,16 +204,20 @@ function submit(){
     setTimeout(()=>override=null,10000);
   }
 
-  glitch();
+  microGlitch();
+
   if(v===secret){win();return;}
 
-  status.innerText=v>secret?"TRACE HIGH":"TRACE LOW";
+  status.innerText=
+    v>secret
+    ?"TRACE OVERSHOOT — ADJUST VECTOR"
+    :"TRACE UNDERSHOOT — INCREASE PAYLOAD";
 
   if(mode==="duo"){
     clearInterval(timer);
     player=player===1?2:1;
     time=level*30;
-    updateUI();
+    updateUI("SESSION SWITCHED");
     startTimer();
   }
 }

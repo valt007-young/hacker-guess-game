@@ -11,184 +11,193 @@
   gtag('config', 'G-LZZGYHD65N');
 </script>
 <meta charset="UTF-8">
-<title>Guess Game</title>
+<title>Hacker Guess Game</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-
 <style>
-*{box-sizing:border-box;font-family:system-ui}
-body{
-  margin:0;
-  background:#0b0b0b;
-  color:#fff;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  min-height:100vh;
-}
-.game{
-  width:100%;
-  max-width:380px;
-  background:#111;
-  border-radius:14px;
-  padding:20px;
+*{margin:0;padding:0;box-sizing:border-box;font-family:monospace}
+body{background:black;overflow:hidden;color:#0f0}
+canvas{position:fixed;top:0;left:0;z-index:-1}
+
+.panel{
+  position:absolute;
+  top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  width:90%;max-width:380px;
+  background:rgba(0,0,0,.75);
+  border:1px solid #0f0;
+  padding:18px;
   text-align:center;
-  box-shadow:0 0 20px rgba(0,255,255,.15);
+  box-shadow:0 0 25px #0f0;
 }
-h1{margin:5px 0;color:#0ff}
+
+h1{margin-bottom:8px}
 .mode button{
   width:48%;
   padding:10px;
   margin:5px 1%;
-  background:#0ff;
-  border:none;
-  border-radius:8px;
-  font-weight:600;
+  background:black;
+  color:#0f0;
+  border:1px solid #0f0;
 }
-.info{
-  margin:15px 0;
-  font-size:14px;
-}
+
 input{
   width:100%;
-  padding:12px;
-  font-size:16px;
-  border-radius:8px;
-  border:none;
+  padding:14px;
+  font-size:18px;
+  background:black;
+  border:1px solid #0f0;
+  color:#0f0;
   text-align:center;
 }
-button.play{
-  width:100%;
-  margin-top:10px;
-  padding:12px;
-  background:#fff;
-  border:none;
-  border-radius:8px;
-  font-weight:600;
-}
-.status{
-  margin-top:15px;
-  font-size:15px;
-  min-height:20px;
-}
-.timer{
-  margin-top:10px;
-  font-size:14px;
-  color:#0ff;
-}
-.turn{
-  margin-top:10px;
-  font-weight:bold;
+
+.info,.turn,.timer,.status{margin-top:8px;font-size:14px}
+.glitch{animation:g .15s infinite}
+@keyframes g{
+  0%{transform:translate(0)}
+  25%{transform:translate(-2px,2px)}
+  50%{transform:translate(2px,-2px)}
+  75%{transform:translate(-2px,-2px)}
 }
 .hidden{display:none}
 </style>
 </head>
 
 <body>
-<div class="game">
+<canvas id="matrix"></canvas>
 
-<h1>GUESS.EXE</h1>
-
-<div class="mode">
-  <button onclick="startGame('solo')">SOLO</button>
-  <button onclick="startGame('duo')">DUO</button>
+<div class="panel" id="menu">
+  <h1>hacker guess game</h1>
+  <div class="mode">
+    <button onclick="start('solo')">SOLO</button>
+    <button onclick="start('duo')">DUO</button>
+  </div>
 </div>
 
-<div id="ui" class="hidden">
-  <div class="info" id="range"></div>
-  <input id="guess" type="number" placeholder="Enter guess">
-  <button class="play" onclick="submitGuess()">SUBMIT</button>
+<div class="panel hidden" id="game">
+  <h1>ACCESS NODE</h1>
+  <div class="info" id="info"></div>
   <div class="turn" id="turn"></div>
   <div class="timer" id="timer"></div>
+  <input id="input" inputmode="numeric" placeholder="ENTER CODE">
   <div class="status" id="status"></div>
 </div>
 
-</div>
-
 <script>
-let mode,level,secret,max;
-let currentPlayer=1;
-let timeLeft;
-let timerInterval;
+/* MATRIX */
+const c=document.getElementById("matrix"),x=c.getContext("2d");
+c.width=innerWidth;c.height=innerHeight;
+let chars="0123456789",drops=Array(Math.floor(c.width/15)).fill(1);
+let override=null;
+setInterval(()=>{
+  x.fillStyle="rgba(0,0,0,0.08)";
+  x.fillRect(0,0,c.width,c.height);
+  x.fillStyle="#0f0";
+  x.font="15px monospace";
+  drops.forEach((y,i)=>{
+    let t=override||chars[Math.floor(Math.random()*chars.length)];
+    x.fillText(t,i*15,y*15);
+    if(y*15>c.height&&Math.random()>0.975)drops[i]=0;
+    drops[i]++;
+  });
+},33);
 
-function startGame(m){
+/* GAME */
+let mode,level=1,max,secret,player=1,time,timer;
+
+const menu=document.getElementById("menu");
+const game=document.getElementById("game");
+const info=document.getElementById("info");
+const turn=document.getElementById("turn");
+const timerEl=document.getElementById("timer");
+const input=document.getElementById("input");
+const status=document.getElementById("status");
+
+function start(m){
   mode=m;
-  level=1;
-  currentPlayer=1;
-  document.querySelector(".mode").classList.add("hidden");
-  document.getElementById("ui").classList.remove("hidden");
+  level=1;player=1;
+  menu.classList.add("hidden");
+  game.classList.remove("hidden");
   nextLevel();
 }
 
 function nextLevel(){
   max=level*100;
   secret=Math.floor(Math.random()*max)+1;
-  timeLeft=mode==="solo"?60:45;
-  document.getElementById("range").innerText=`LEVEL ${level} | Range: 1 - ${max}`;
-  document.getElementById("status").innerText="";
-  updateTurn();
+  time=mode==="duo"?30:60;
+  updateUI();
   startTimer();
 }
 
-function updateTurn(){
-  if(mode==="duo"){
-    document.getElementById("turn").innerText=`Player ${currentPlayer}'s Turn`;
-  } else {
-    document.getElementById("turn").innerText="";
-  }
+function updateUI(){
+  info.innerText=`LEVEL ${level} | RANGE 1-${max}`;
+  turn.innerText=mode==="duo"?`PLAYER ${player}`:"";
+  status.innerText="";
 }
 
 function startTimer(){
-  clearInterval(timerInterval);
-  document.getElementById("timer").innerText=`Time: ${timeLeft}s`;
-  timerInterval=setInterval(()=>{
-    timeLeft--;
-    document.getElementById("timer").innerText=`Time: ${timeLeft}s`;
-    if(timeLeft<=0){
-      clearInterval(timerInterval);
-      lose();
-    }
+  clearInterval(timer);
+  timerEl.innerText=`TIME ${time}s`;
+  timer=setInterval(()=>{
+    time--;
+    timerEl.innerText=`TIME ${time}s`;
+    if(time<=0)lose();
   },1000);
 }
 
-function submitGuess(){
-  let g=Number(document.getElementById("guess").value);
-  document.getElementById("guess").value="";
-  if(!g)return;
+function glitch(){
+  game.classList.add("glitch");
+  setTimeout(()=>game.classList.remove("glitch"),300);
+}
 
-  if(g===secret){
-    win();
+function lose(){
+  clearInterval(timer);
+  glitch();
+  if(mode==="duo"){
+    player=player===1?2:1;
+    time=30;
+    startTimer();
+    turn.innerText=`PLAYER ${player}`;
   }else{
-    document.getElementById("status").innerText=
-      g>secret?"Too High":"Too Low";
-    if(mode==="duo"){
-      clearInterval(timerInterval);
-      currentPlayer=currentPlayer===1?2:1;
-      startTimer();
-      updateTurn();
-    }
+    level=1;
+    nextLevel();
   }
 }
 
 function win(){
-  clearInterval(timerInterval);
-  document.getElementById("status").innerText=
-    mode==="duo"
-    ?`🎉 Player ${currentPlayer} Wins!`
-    :"🎉 Correct!";
+  clearInterval(timer);
+  status.innerText=mode==="duo"
+    ?`PLAYER ${player} BREACHED`
+    :"ACCESS GRANTED";
   setTimeout(()=>{
     level++;
     nextLevel();
   },1500);
 }
 
-function lose(){
-  document.getElementById("status").innerText="❌ Time Up!";
-  setTimeout(()=>{
-    level=1;
-    nextLevel();
-  },1500);
-}
+input.addEventListener("keydown",e=>{
+  if(e.key==="Enter"){
+    let v=Number(input.value);input.value="";
+    if(!v)return;
+
+    if(v===67){
+      override="67";
+      setTimeout(()=>override=null,10000);
+    }
+
+    glitch();
+    v===secret?win():status.innerText=v>secret?"TRACE HIGH":"TRACE LOW";
+    if(mode==="duo"&&v!==secret){
+      clearInterval(timer);
+      player=player===1?2:1;
+      time=30;
+      updateUI();
+      startTimer();
+    }
+  }
+});
 </script>
 </body>
 </html>
+
+
+

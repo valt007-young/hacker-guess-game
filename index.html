@@ -13,6 +13,7 @@
 <meta charset="UTF-8">
 <title>Hacker Guess Game</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:monospace}
 body{background:black;overflow:hidden;color:#0f0}
@@ -40,9 +41,13 @@ h1{margin-bottom:8px}
   border:1px solid #0f0;
 }
 
+.info,.turn,.timer,.status{margin-top:8px;font-size:14px}
+.status{min-height:18px}
+
 input{
   width:100%;
   padding:14px;
+  margin-top:10px;
   font-size:18px;
   background:black;
   border:1px solid #0f0;
@@ -50,7 +55,6 @@ input{
   text-align:center;
 }
 
-.info,.turn,.timer,.status{margin-top:8px;font-size:14px}
 .glitch{animation:g .15s infinite}
 @keyframes g{
   0%{transform:translate(0)}
@@ -58,6 +62,7 @@ input{
   50%{transform:translate(2px,-2px)}
   75%{transform:translate(-2px,-2px)}
 }
+
 .hidden{display:none}
 </style>
 </head>
@@ -66,7 +71,7 @@ input{
 <canvas id="matrix"></canvas>
 
 <div class="panel" id="menu">
-  <h1>hacker guess game</h1>
+  <h1>FIREWALL.EXE</h1>
   <div class="mode">
     <button onclick="start('solo')">SOLO</button>
     <button onclick="start('duo')">DUO</button>
@@ -74,27 +79,28 @@ input{
 </div>
 
 <div class="panel hidden" id="game">
-  <h1>ACCESS NODE</h1>
+  <h1>BREACHING FIREWALL</h1>
   <div class="info" id="info"></div>
   <div class="turn" id="turn"></div>
   <div class="timer" id="timer"></div>
-  <input id="input" inputmode="numeric" placeholder="ENTER CODE">
   <div class="status" id="status"></div>
+  <input id="input" inputmode="numeric" placeholder="ENTER CODE">
 </div>
 
 <script>
 /* MATRIX */
 const c=document.getElementById("matrix"),x=c.getContext("2d");
 c.width=innerWidth;c.height=innerHeight;
-let chars="0123456789",drops=Array(Math.floor(c.width/15)).fill(1);
+let drops=Array(Math.floor(c.width/15)).fill(1);
 let override=null;
+
 setInterval(()=>{
   x.fillStyle="rgba(0,0,0,0.08)";
   x.fillRect(0,0,c.width,c.height);
   x.fillStyle="#0f0";
   x.font="15px monospace";
   drops.forEach((y,i)=>{
-    let t=override||chars[Math.floor(Math.random()*chars.length)];
+    let t=override||Math.floor(Math.random()*10);
     x.fillText(t,i*15,y*15);
     if(y*15>c.height&&Math.random()>0.975)drops[i]=0;
     drops[i]++;
@@ -102,28 +108,26 @@ setInterval(()=>{
 },33);
 
 /* GAME */
-let mode,level=1,max,secret,player=1,time,timer;
-
+let mode,level,player,secret,max,time,timer;
 const menu=document.getElementById("menu");
 const game=document.getElementById("game");
 const info=document.getElementById("info");
 const turn=document.getElementById("turn");
 const timerEl=document.getElementById("timer");
-const input=document.getElementById("input");
 const status=document.getElementById("status");
+const input=document.getElementById("input");
 
 function start(m){
-  mode=m;
-  level=1;player=1;
+  mode=m;level=1;player=1;
   menu.classList.add("hidden");
   game.classList.remove("hidden");
   nextLevel();
 }
 
 function nextLevel(){
-  max=level*100;
+  max=Math.pow(10,level);
   secret=Math.floor(Math.random()*max)+1;
-  time=mode==="duo"?30:60;
+  time=level*30;
   updateUI();
   startTimer();
 }
@@ -131,7 +135,7 @@ function nextLevel(){
 function updateUI(){
   info.innerText=`LEVEL ${level} | RANGE 1-${max}`;
   turn.innerText=mode==="duo"?`PLAYER ${player}`:"";
-  status.innerText="";
+  status.innerText="INITIALIZING TRACE…";
 }
 
 function startTimer(){
@@ -154,9 +158,9 @@ function lose(){
   glitch();
   if(mode==="duo"){
     player=player===1?2:1;
-    time=30;
+    time=level*30;
+    updateUI();
     startTimer();
-    turn.innerText=`PLAYER ${player}`;
   }else{
     level=1;
     nextLevel();
@@ -174,30 +178,41 @@ function win(){
   },1500);
 }
 
-input.addEventListener("keydown",e=>{
-  if(e.key==="Enter"){
-    let v=Number(input.value);input.value="";
-    if(!v)return;
-
-    if(v===67){
-      override="67";
-      setTimeout(()=>override=null,10000);
-    }
-
-    glitch();
-    v===secret?win():status.innerText=v>secret?"TRACE HIGH":"TRACE LOW";
-    if(mode==="duo"&&v!==secret){
-      clearInterval(timer);
-      player=player===1?2:1;
-      time=30;
-      updateUI();
-      startTimer();
-    }
-  }
+/* AUTO SUBMIT */
+let typingTimer;
+input.addEventListener("input",()=>{
+  clearTimeout(typingTimer);
+  typingTimer=setTimeout(()=>submit(),600);
 });
+
+input.addEventListener("keydown",e=>{
+  if(e.key==="Enter")submit();
+});
+
+function submit(){
+  let v=Number(input.value);
+  input.value="";
+  if(!v)return;
+
+  if(v===67){
+    override="67";
+    setTimeout(()=>override=null,10000);
+  }
+
+  glitch();
+  if(v===secret){win();return;}
+
+  status.innerText=v>secret?"TRACE HIGH":"TRACE LOW";
+
+  if(mode==="duo"){
+    clearInterval(timer);
+    player=player===1?2:1;
+    time=level*30;
+    updateUI();
+    startTimer();
+  }
+}
 </script>
 </body>
 </html>
-
-
 

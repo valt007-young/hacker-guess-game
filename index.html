@@ -14,7 +14,6 @@
 <title>Hacker Guess Game</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:monospace}
 body{background:black;overflow:hidden;color:#0f0}
@@ -29,7 +28,7 @@ canvas{position:fixed;top:0;left:0;z-index:-1}
   border:1px solid #0f0;
   padding:18px;
   text-align:center;
-  box-shadow:0 0 20px rgba(0,255,0,.6);
+  box-shadow:0 0 18px rgba(0,255,0,.6);
 }
 
 h1{margin-bottom:6px}
@@ -46,7 +45,7 @@ h1{margin-bottom:6px}
   margin-top:8px;
   font-size:14px;
 }
-.status{min-height:18px}
+.status{min-height:28px}
 
 input{
   width:100%;
@@ -59,13 +58,12 @@ input{
   text-align:center;
 }
 
-/* subtle glitch */
 .micro{
-  animation:micro .15s linear;
+  animation:micro .12s linear;
 }
 @keyframes micro{
   0%{filter:none}
-  50%{filter:brightness(1.4)}
+  50%{filter:brightness(1.3)}
   100%{filter:none}
 }
 
@@ -85,12 +83,12 @@ input{
 </div>
 
 <div class="panel hidden" id="game">
-  <h1>BRUTE FORCE MODULE</h1>
+  <h1>FIREWALL BREACH</h1>
   <div class="info" id="info"></div>
   <div class="turn" id="turn"></div>
   <div class="timer" id="timer"></div>
   <div class="status" id="status"></div>
-  <input id="input" inputmode="numeric" placeholder="ENTER PAYLOAD">
+  <input id="input" inputmode="numeric" placeholder="ENTER IP">
 </div>
 
 <script>
@@ -124,7 +122,7 @@ const status=document.getElementById("status");
 const input=document.getElementById("input");
 
 function start(m){
-  mode=m;level=1;player=1;
+  mode=m;level=1;player="A";
   menu.classList.add("hidden");
   game.classList.remove("hidden");
   nextLevel();
@@ -134,7 +132,7 @@ function nextLevel(){
   max=Math.pow(10,level+1); // starts at 100
   secret=Math.floor(Math.random()*max)+1;
   time=level*30;
-  updateUI("INITIATING BRUTE FORCE…");
+  updateUI("INITIATING FIREWALL BREACH…");
   startTimer();
 }
 
@@ -150,22 +148,21 @@ function startTimer(){
   timer=setInterval(()=>{
     time--;
     timerEl.innerText=`TIME ${time}s`;
-    if(time<=0)lose();
+    if(time<=0)switchTurn();
   },1000);
 }
 
 function microGlitch(){
   game.classList.add("micro");
-  setTimeout(()=>game.classList.remove("micro"),150);
+  setTimeout(()=>game.classList.remove("micro"),120);
 }
 
-function lose(){
+function switchTurn(){
   clearInterval(timer);
-  microGlitch();
   if(mode==="duo"){
-    player=player===1?2:1;
+    player=player==="A"?"B":"A";
     time=level*30;
-    updateUI("SESSION TRANSFERRED");
+    updateUI("SESSION SWITCHED");
     startTimer();
   }else{
     level=1;
@@ -175,8 +172,9 @@ function lose(){
 
 function win(){
   clearInterval(timer);
-  status.innerText=mode==="duo"
-    ?`PLAYER ${player} BREACHED FIREWALL`
+  status.innerText=
+    mode==="duo"
+    ?`PLAYER ${player} → FIREWALL BREACHED`
     :"FIREWALL BREACHED";
   setTimeout(()=>{
     level++;
@@ -184,44 +182,33 @@ function win(){
   },1500);
 }
 
-/* AUTO SUBMIT */
-let typingTimer;
-input.addEventListener("input",()=>{
-  clearTimeout(typingTimer);
-  typingTimer=setTimeout(()=>submit(),600);
-});
 input.addEventListener("keydown",e=>{
-  if(e.key==="Enter")submit();
+  if(e.key==="Enter"){
+    let v=Number(input.value);
+    input.value="";
+    if(!v)return;
+
+    if(v===67){
+      override="67";
+      setTimeout(()=>override=null,10000);
+    }
+
+    microGlitch();
+
+    if(v===secret){win();return;}
+
+    let result=v>secret?"IP TOO HIGH":"IP TOO LOW";
+
+    status.innerText=
+      mode==="duo"
+      ?`PLAYER ${player} → ${v}\n${result}`
+      :`${v} → ${result}`;
+
+    if(mode==="duo")switchTurn();
+  }
 });
-
-function submit(){
-  let v=Number(input.value);
-  input.value="";
-  if(!v)return;
-
-  if(v===67){
-    override="67";
-    setTimeout(()=>override=null,10000);
-  }
-
-  microGlitch();
-
-  if(v===secret){win();return;}
-
-  status.innerText=
-    v>secret
-    ?"TRACE OVERSHOOT — ADJUST VECTOR"
-    :"TRACE UNDERSHOOT — INCREASE PAYLOAD";
-
-  if(mode==="duo"){
-    clearInterval(timer);
-    player=player===1?2:1;
-    time=level*30;
-    updateUI("SESSION SWITCHED");
-    startTimer();
-  }
-}
 </script>
 </body>
 </html>
+
 

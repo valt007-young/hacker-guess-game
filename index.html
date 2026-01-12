@@ -19,39 +19,55 @@ body{
   background:black;
   color:#00ff88;
   font-family:monospace;
-  display:flex;
-  justify-content:center;
-  align-items:center;
   height:100vh;
   overflow:hidden;
-}
-#game{
-  width:95%;
-  max-width:420px;
-  border:1px solid #00ff88;
-  padding:20px;
-  text-align:center;
-  background:rgba(0,0,0,0.6);
-}
-h1{margin:5px 0;}
-#info{margin:8px 0;}
-input{
-  width:100%;
-  padding:12px;
-  font-size:18px;
-  background:black;
-  color:#00ff88;
-  border:1px solid #00ff88;
-  outline:none;
-}
-#feedback{
-  margin-top:15px;
-  min-height:32px;
 }
 canvas{
   position:fixed;
   inset:0;
   z-index:-1;
+}
+#panel{
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  width:95%;
+  max-width:420px;
+  background:rgba(0,0,0,0.75);
+  border:1px solid #00ff88;
+  padding:20px;
+  box-shadow:0 0 20px #00ff8855;
+}
+h1{text-align:center;margin:5px 0;}
+.stat{text-align:center;opacity:.8;margin-bottom:6px;}
+input{
+  width:100%;
+  padding:12px;
+  background:black;
+  border:1px solid #00ff88;
+  color:#00ff88;
+  font-size:18px;
+}
+#feedback{
+  min-height:32px;
+  margin-top:12px;
+  text-align:center;
+}
+#leader{
+  margin-top:12px;
+  font-size:14px;
+  opacity:.8;
+  border-top:1px solid #00ff8855;
+  padding-top:8px;
+}
+.glitch{
+  animation:glitch .15s;
+}
+@keyframes glitch{
+  0%{transform:translate(-50%,-50%)}
+  50%{transform:translate(-49%,-51%)}
+  100%{transform:translate(-50%,-50%)}
 }
 </style>
 </head>
@@ -59,19 +75,23 @@ canvas{
 <body>
 <canvas id="matrix"></canvas>
 
-<div id="game">
+<div id="panel">
   <h1>🔥 FIREWALL BREACH</h1>
-  <div id="info"></div>
-  <div id="timer"></div>
-  <input id="guess" type="number" placeholder="Enter IP Address">
+  <div class="stat" id="level"></div>
+  <div class="stat" id="timer"></div>
+  <input id="input" type="number" placeholder="Enter IP Address">
   <div id="feedback"></div>
+  <div id="leader"></div>
 </div>
 
 <script>
-const input = document.getElementById("guess");
-const feedback = document.getElementById("feedback");
-const info = document.getElementById("info");
+/* ===== GAME LOGIC ===== */
+const input = document.getElementById("input");
+const levelDiv = document.getElementById("level");
 const timerDiv = document.getElementById("timer");
+const feedback = document.getElementById("feedback");
+const leader = document.getElementById("leader");
+const panel = document.getElementById("panel");
 
 let level = 1;
 let range = 100;
@@ -79,10 +99,18 @@ let timeLimit = 30;
 let target;
 let timer;
 
+/* leaderboard */
+let best = Number(localStorage.getItem("bestLevel")||0);
+
+function updateLeader(){
+  leader.innerHTML = `🏆 Best Level: ${best}`;
+}
+updateLeader();
+
 function startLevel(){
   target = Math.floor(Math.random()*range)+1;
-  info.textContent = `LEVEL ${level} | RANGE 1–${range}`;
-  feedback.textContent = "Breaching firewall...";
+  levelDiv.textContent = `LEVEL ${level} | RANGE 1–${range}`;
+  feedback.textContent = "Establishing secure tunnel...";
   startTimer();
 }
 
@@ -93,71 +121,84 @@ function startTimer(){
   timer = setInterval(()=>{
     t--;
     timerDiv.textContent = `TIME ${t}s`;
-    if(t<=0){
-      fail();
-    }
+    if(t<=0) fail();
   },1000);
 }
 
 function success(){
   clearInterval(timer);
-  feedback.textContent = "🔥 ACCESS GRANTED";
+  feedback.textContent = "✅ ACCESS GRANTED";
+  best = Math.max(best,level);
+  localStorage.setItem("bestLevel",best);
+  updateLeader();
   level++;
   range *= 10;
   timeLimit += 30;
-  setTimeout(startLevel,2000);
+  setTimeout(startLevel,1800);
 }
 
 function fail(){
   clearInterval(timer);
   feedback.textContent = "❌ FIREWALL RESET";
-  setTimeout(startLevel,2000);
+  panel.classList.add("glitch");
+  setTimeout(()=>panel.classList.remove("glitch"),150);
+  setTimeout(startLevel,1800);
 }
 
 input.addEventListener("keydown",e=>{
   if(e.key==="Enter"){
-    const val = Number(input.value);
+    const v = Number(input.value);
     input.value="";
+    if(!v) return;
 
-    if(!val) return;
+    if(v===67) matrix67();
 
-    if(val===67) matrix67();
-
-    if(val > target){
-      feedback.textContent = `IP TOO HIGH → ${val}`;
-    }else if(val < target){
-      feedback.textContent = `IP TOO LOW → ${val}`;
+    if(v>target){
+      feedback.textContent = `IP TOO HIGH → ${v}`;
+    }else if(v<target){
+      feedback.textContent = `IP TOO LOW → ${v}`;
     }else{
       success();
-      return;
     }
   }
 });
 
-/* MATRIX BACKGROUND */
-const c = document.getElementById("matrix");
-const ctx = c.getContext("2d");
-c.width = innerWidth;
-c.height = innerHeight;
-let drops = Array(200).fill(0);
+/* ===== MATRIX RAIN (REAL) ===== */
+const canvas = document.getElementById("matrix");
+const ctx = canvas.getContext("2d");
+canvas.width = innerWidth;
+canvas.height = innerHeight;
 
-function drawMatrix(char){
-  ctx.fillStyle="rgba(0,0,0,0.15)";
-  ctx.fillRect(0,0,c.width,c.height);
+const fontSize = 16;
+const columns = Math.floor(canvas.width / fontSize);
+const drops = Array(columns).fill(0);
+
+function drawMatrix(){
+  ctx.fillStyle="rgba(0,0,0,0.08)";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.fillStyle="#00ff88";
-  ctx.font="14px monospace";
-  drops.forEach((y,i)=>{
-    const text = char || (Math.random()>0.5?"1":"0");
-    ctx.fillText(text,i*10,y);
-    drops[i] = y > c.height ? 0 : y + 10;
-  });
+  ctx.font=fontSize+"px monospace";
+
+  for(let i=0;i<drops.length;i++){
+    const text = Math.random()>0.5 ? "1":"0";
+    ctx.fillText(text,i*fontSize,drops[i]*fontSize);
+    if(drops[i]*fontSize > canvas.height && Math.random()>0.975)
+      drops[i]=0;
+    drops[i]++;
+  }
 }
-setInterval(()=>drawMatrix(),50);
+setInterval(drawMatrix,50);
 
 function matrix67(){
-  let start = Date.now();
-  let flood = setInterval(()=>{
-    drawMatrix("67");
+  let start=Date.now();
+  let flood=setInterval(()=>{
+    ctx.fillStyle="rgba(0,0,0,0.15)";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle="#00ff88";
+    for(let i=0;i<drops.length;i++){
+      ctx.fillText("67",i*fontSize,drops[i]*fontSize);
+      drops[i]++;
+    }
     if(Date.now()-start>10000) clearInterval(flood);
   },30);
 }

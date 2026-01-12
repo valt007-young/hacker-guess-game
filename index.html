@@ -13,26 +13,28 @@
 <meta charset="UTF-8">
 <title>Hacker Guess Game</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <style>
 body{
   margin:0;
   background:black;
   color:#00ff88;
-  font-family: monospace;
+  font-family:monospace;
   display:flex;
   justify-content:center;
   align-items:center;
   height:100vh;
+  overflow:hidden;
 }
 #game{
   width:95%;
   max-width:420px;
-  text-align:center;
   border:1px solid #00ff88;
   padding:20px;
+  text-align:center;
+  background:rgba(0,0,0,0.6);
 }
 h1{margin:5px 0;}
+#info{margin:8px 0;}
 input{
   width:100%;
   padding:12px;
@@ -40,9 +42,12 @@ input{
   background:black;
   color:#00ff88;
   border:1px solid #00ff88;
+  outline:none;
 }
-#feedback{margin-top:15px;min-height:30px;}
-#session{opacity:0.7;font-size:14px;}
+#feedback{
+  margin-top:15px;
+  min-height:32px;
+}
 canvas{
   position:fixed;
   inset:0;
@@ -56,51 +61,57 @@ canvas{
 
 <div id="game">
   <h1>🔥 FIREWALL BREACH</h1>
-  <div id="level"></div>
+  <div id="info"></div>
   <div id="timer"></div>
   <input id="guess" type="number" placeholder="Enter IP Address">
   <div id="feedback"></div>
-  <div id="session"></div>
 </div>
 
 <script>
 const input = document.getElementById("guess");
 const feedback = document.getElementById("feedback");
-const sessionDiv = document.getElementById("session");
-const levelDiv = document.getElementById("level");
+const info = document.getElementById("info");
 const timerDiv = document.getElementById("timer");
 
 let level = 1;
 let range = 100;
-let time = 30;
-let target = Math.floor(Math.random()*range)+1;
-let player = "A";
+let timeLimit = 30;
+let target;
 let timer;
 
-function start(){
+function startLevel(){
   target = Math.floor(Math.random()*range)+1;
-  levelDiv.textContent = `LEVEL ${level} | RANGE 1-${range}`;
+  info.textContent = `LEVEL ${level} | RANGE 1–${range}`;
+  feedback.textContent = "Breaching firewall...";
   startTimer();
 }
 
 function startTimer(){
-  let t = time;
-  timerDiv.textContent = `TIME ${t}s`;
   clearInterval(timer);
+  let t = timeLimit;
+  timerDiv.textContent = `TIME ${t}s`;
   timer = setInterval(()=>{
     t--;
     timerDiv.textContent = `TIME ${t}s`;
     if(t<=0){
-      switchTurn();
+      fail();
     }
   },1000);
 }
 
-function switchTurn(){
+function success(){
   clearInterval(timer);
-  player = player==="A"?"B":"A";
-  sessionDiv.textContent = `SESSION SWITCHED → PLAYER ${player}`;
-  setTimeout(start,1000);
+  feedback.textContent = "🔥 ACCESS GRANTED";
+  level++;
+  range *= 10;
+  timeLimit += 30;
+  setTimeout(startLevel,2000);
+}
+
+function fail(){
+  clearInterval(timer);
+  feedback.textContent = "❌ FIREWALL RESET";
+  setTimeout(startLevel,2000);
 }
 
 input.addEventListener("keydown",e=>{
@@ -108,50 +119,50 @@ input.addEventListener("keydown",e=>{
     const val = Number(input.value);
     input.value="";
 
+    if(!val) return;
+
     if(val===67) matrix67();
 
-    if(val>target){
-      feedback.textContent = `IP TOO HIGH → ${val} (Player ${player})`;
-    }else if(val<target){
-      feedback.textContent = `IP TOO LOW → ${val} (Player ${player})`;
+    if(val > target){
+      feedback.textContent = `IP TOO HIGH → ${val}`;
+    }else if(val < target){
+      feedback.textContent = `IP TOO LOW → ${val}`;
     }else{
-      feedback.textContent = `🔥 FIREWALL BREACHED BY PLAYER ${player}`;
-      clearInterval(timer);
-      level++;
-      range*=10;
-      time+=30;
-      setTimeout(start,2000);
+      success();
       return;
     }
-    switchTurn();
   }
 });
 
-/* MATRIX */
-const c=document.getElementById("matrix");
-const ctx=c.getContext("2d");
-c.width=innerWidth;c.height=innerHeight;
-let drops=Array(200).fill(0);
+/* MATRIX BACKGROUND */
+const c = document.getElementById("matrix");
+const ctx = c.getContext("2d");
+c.width = innerWidth;
+c.height = innerHeight;
+let drops = Array(200).fill(0);
+
 function drawMatrix(char){
-  ctx.fillStyle="rgba(0,0,0,0.1)";
+  ctx.fillStyle="rgba(0,0,0,0.15)";
   ctx.fillRect(0,0,c.width,c.height);
   ctx.fillStyle="#00ff88";
+  ctx.font="14px monospace";
   drops.forEach((y,i)=>{
-    ctx.fillText(char||Math.random()>0.5?"1":"0",i*10,y);
-    drops[i]=(y>c.height)?0:y+10;
+    const text = char || (Math.random()>0.5?"1":"0");
+    ctx.fillText(text,i*10,y);
+    drops[i] = y > c.height ? 0 : y + 10;
   });
 }
 setInterval(()=>drawMatrix(),50);
 
 function matrix67(){
-  let start=Date.now();
-  let flood=setInterval(()=>{
+  let start = Date.now();
+  let flood = setInterval(()=>{
     drawMatrix("67");
     if(Date.now()-start>10000) clearInterval(flood);
   },30);
 }
 
-start();
+startLevel();
 </script>
 </body>
 </html>

@@ -15,200 +15,143 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-*{margin:0;padding:0;box-sizing:border-box;font-family:monospace}
-body{background:black;overflow:hidden;color:#0f0}
-canvas{position:fixed;top:0;left:0;z-index:-1}
-
-.panel{
-  position:absolute;
-  top:50%;left:50%;
-  transform:translate(-50%,-50%);
-  width:90%;max-width:380px;
-  background:rgba(0,0,0,.75);
-  border:1px solid #0f0;
-  padding:18px;
-  text-align:center;
-  box-shadow:0 0 18px rgba(0,255,0,.6);
-}
-
-h1{margin-bottom:6px}
-.mode button{
-  width:48%;
-  padding:10px;
-  margin:5px 1%;
+body{
+  margin:0;
   background:black;
-  color:#0f0;
-  border:1px solid #0f0;
+  color:#00ff88;
+  font-family: monospace;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
 }
-
-.info,.turn,.timer,.status{
-  margin-top:8px;
-  font-size:14px;
+#game{
+  width:95%;
+  max-width:420px;
+  text-align:center;
+  border:1px solid #00ff88;
+  padding:20px;
 }
-.status{min-height:28px}
-
+h1{margin:5px 0;}
 input{
   width:100%;
-  padding:14px;
-  margin-top:10px;
+  padding:12px;
   font-size:18px;
   background:black;
-  border:1px solid #0f0;
-  color:#0f0;
-  text-align:center;
+  color:#00ff88;
+  border:1px solid #00ff88;
 }
-
-.micro{
-  animation:micro .12s linear;
+#feedback{margin-top:15px;min-height:30px;}
+#session{opacity:0.7;font-size:14px;}
+canvas{
+  position:fixed;
+  inset:0;
+  z-index:-1;
 }
-@keyframes micro{
-  0%{filter:none}
-  50%{filter:brightness(1.3)}
-  100%{filter:none}
-}
-
-.hidden{display:none}
 </style>
 </head>
 
 <body>
 <canvas id="matrix"></canvas>
 
-<div class="panel" id="menu">
-  <h1>FIREWALL.EXE</h1>
-  <div class="mode">
-    <button onclick="start('solo')">SOLO</button>
-    <button onclick="start('duo')">DUO</button>
-  </div>
-</div>
-
-<div class="panel hidden" id="game">
-  <h1>FIREWALL BREACH</h1>
-  <div class="info" id="info"></div>
-  <div class="turn" id="turn"></div>
-  <div class="timer" id="timer"></div>
-  <div class="status" id="status"></div>
-  <input id="input" inputmode="numeric" placeholder="ENTER IP">
+<div id="game">
+  <h1>🔥 FIREWALL BREACH</h1>
+  <div id="level"></div>
+  <div id="timer"></div>
+  <input id="guess" type="number" placeholder="Enter IP Address">
+  <div id="feedback"></div>
+  <div id="session"></div>
 </div>
 
 <script>
-/* MATRIX */
-const c=document.getElementById("matrix"),x=c.getContext("2d");
-c.width=innerWidth;c.height=innerHeight;
-let drops=Array(Math.floor(c.width/15)).fill(1);
-let override=null;
+const input = document.getElementById("guess");
+const feedback = document.getElementById("feedback");
+const sessionDiv = document.getElementById("session");
+const levelDiv = document.getElementById("level");
+const timerDiv = document.getElementById("timer");
 
-setInterval(()=>{
-  x.fillStyle="rgba(0,0,0,0.08)";
-  x.fillRect(0,0,c.width,c.height);
-  x.fillStyle="#0f0";
-  x.font="15px monospace";
-  drops.forEach((y,i)=>{
-    let t=override||Math.floor(Math.random()*10);
-    x.fillText(t,i*15,y*15);
-    if(y*15>c.height&&Math.random()>0.975)drops[i]=0;
-    drops[i]++;
-  });
-},33);
+let level = 1;
+let range = 100;
+let time = 30;
+let target = Math.floor(Math.random()*range)+1;
+let player = "A";
+let timer;
 
-/* GAME */
-let mode,level,player,secret,max,time,timer;
-const menu=document.getElementById("menu");
-const game=document.getElementById("game");
-const info=document.getElementById("info");
-const turn=document.getElementById("turn");
-const timerEl=document.getElementById("timer");
-const status=document.getElementById("status");
-const input=document.getElementById("input");
-
-function start(m){
-  mode=m;level=1;player="A";
-  menu.classList.add("hidden");
-  game.classList.remove("hidden");
-  nextLevel();
-}
-
-function nextLevel(){
-  max=Math.pow(10,level+1); // starts at 100
-  secret=Math.floor(Math.random()*max)+1;
-  time=level*30;
-  updateUI("INITIATING FIREWALL BREACH…");
+function start(){
+  target = Math.floor(Math.random()*range)+1;
+  levelDiv.textContent = `LEVEL ${level} | RANGE 1-${range}`;
   startTimer();
 }
 
-function updateUI(msg){
-  info.innerText=`LEVEL ${level} | RANGE 1-${max}`;
-  turn.innerText=mode==="duo"?`PLAYER ${player}`:"";
-  status.innerText=msg;
-}
-
 function startTimer(){
+  let t = time;
+  timerDiv.textContent = `TIME ${t}s`;
   clearInterval(timer);
-  timerEl.innerText=`TIME ${time}s`;
-  timer=setInterval(()=>{
-    time--;
-    timerEl.innerText=`TIME ${time}s`;
-    if(time<=0)switchTurn();
+  timer = setInterval(()=>{
+    t--;
+    timerDiv.textContent = `TIME ${t}s`;
+    if(t<=0){
+      switchTurn();
+    }
   },1000);
-}
-
-function microGlitch(){
-  game.classList.add("micro");
-  setTimeout(()=>game.classList.remove("micro"),120);
 }
 
 function switchTurn(){
   clearInterval(timer);
-  if(mode==="duo"){
-    player=player==="A"?"B":"A";
-    time=level*30;
-    updateUI("SESSION SWITCHED");
-    startTimer();
-  }else{
-    level=1;
-    nextLevel();
-  }
-}
-
-function win(){
-  clearInterval(timer);
-  status.innerText=
-    mode==="duo"
-    ?`PLAYER ${player} → FIREWALL BREACHED`
-    :"FIREWALL BREACHED";
-  setTimeout(()=>{
-    level++;
-    nextLevel();
-  },1500);
+  player = player==="A"?"B":"A";
+  sessionDiv.textContent = `SESSION SWITCHED → PLAYER ${player}`;
+  setTimeout(start,1000);
 }
 
 input.addEventListener("keydown",e=>{
   if(e.key==="Enter"){
-    let v=Number(input.value);
+    const val = Number(input.value);
     input.value="";
-    if(!v)return;
 
-    if(v===67){
-      override="67";
-      setTimeout(()=>override=null,10000);
+    if(val===67) matrix67();
+
+    if(val>target){
+      feedback.textContent = `IP TOO HIGH → ${val} (Player ${player})`;
+    }else if(val<target){
+      feedback.textContent = `IP TOO LOW → ${val} (Player ${player})`;
+    }else{
+      feedback.textContent = `🔥 FIREWALL BREACHED BY PLAYER ${player}`;
+      clearInterval(timer);
+      level++;
+      range*=10;
+      time+=30;
+      setTimeout(start,2000);
+      return;
     }
-
-    microGlitch();
-
-    if(v===secret){win();return;}
-
-    let result=v>secret?"IP TOO HIGH":"IP TOO LOW";
-
-    status.innerText=
-      mode==="duo"
-      ?`PLAYER ${player} → ${v}\n${result}`
-      :`${v} → ${result}`;
-
-    if(mode==="duo")switchTurn();
+    switchTurn();
   }
 });
+
+/* MATRIX */
+const c=document.getElementById("matrix");
+const ctx=c.getContext("2d");
+c.width=innerWidth;c.height=innerHeight;
+let drops=Array(200).fill(0);
+function drawMatrix(char){
+  ctx.fillStyle="rgba(0,0,0,0.1)";
+  ctx.fillRect(0,0,c.width,c.height);
+  ctx.fillStyle="#00ff88";
+  drops.forEach((y,i)=>{
+    ctx.fillText(char||Math.random()>0.5?"1":"0",i*10,y);
+    drops[i]=(y>c.height)?0:y+10;
+  });
+}
+setInterval(()=>drawMatrix(),50);
+
+function matrix67(){
+  let start=Date.now();
+  let flood=setInterval(()=>{
+    drawMatrix("67");
+    if(Date.now()-start>10000) clearInterval(flood);
+  },30);
+}
+
+start();
 </script>
 </body>
 </html>
-
-
